@@ -1,5 +1,4 @@
-import os
-import sys
+import os, sys
 
 def main() -> None:
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "poi_data_parser.settings")

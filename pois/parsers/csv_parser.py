@@ -1,9 +1,7 @@
-from __future__ import annotations
 import csv
 from typing import Dict, Any, List
 from django.db import transaction
 from pois.models import Poi
-from pois.parsers.rating_utils import parse_csv_ratings
 from pois.utils import normalize_record, chunk_by_parts, chunked, progress_messages
 
 def load_csv(path: str, show_progress: bool = True) -> int:

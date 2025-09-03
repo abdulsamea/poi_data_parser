@@ -1,27 +1,35 @@
 from typing import Iterable, List, Dict, Any, Generator
+from decimal import Decimal
 from statistics import mean
+from typing import Any, List
 
-def parse_ratings(raw: Any) -> List[float]:
-    if raw is None or raw == "":
+
+def parse_ratings(raw: Any) -> List[Decimal]:
+    if raw is None or (isinstance(raw, str) and raw.strip() == ""):
         return []
     if isinstance(raw, (list, tuple)):
         vals = raw
     elif isinstance(raw, str):
-        # CSV or strings like "3.0,4.0,5" => numbers
-        parts = [p.strip() for p in raw.split(",")]
-        vals = parts
+        s = raw.strip()
+        # Strip curly braces found in CSV like "{10.0,10.0,...}"
+        if s.startswith("{") and s.endswith("}"):
+            s = s[1:-1]
+        parts = [p.strip() for p in s.split(",")]
+        vals = [p for p in parts if p != ""]
     else:
         vals = [raw]
-    out: List[float] = []
+
+    out: List[Decimal] = []
     for v in vals:
         try:
-            out.append(float(v))
-        except (TypeError, ValueError):
+            out.append(Decimal(str(v).strip()))
+        except Exception:
             continue
     return out
 
-def average_rating(ratings: List[float]) -> float | None:
+def average_rating(ratings: List[Decimal]) -> Decimal | None:
     return round(mean(ratings), 2) if ratings else None
+
 
 def normalize_record(record: Dict[str, Any], file_type: str) -> Dict[str, Any]:
     # Map source keys for different files to common key-value data and return it.
