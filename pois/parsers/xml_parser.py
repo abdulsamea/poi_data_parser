@@ -1,27 +1,50 @@
-import xml.etree.ElementTree as ET
+from xml.etree import ElementTree as ET
+from typing import Dict, Any, List
+from django.db import transaction
+from pois.models import Poi
+from pois.utils import normalize_record, chunk_by_parts, chunked, progress_messages
 
-def _get_text(elem, tag):
-    node = elem.find(tag)
-    return node.text if node is not None else ""
+def _element_to_dict(el: ET.Element) -> Dict[str, Any]:
+    d: Dict[str, Any] = {}
+    for child in el:
+        tag = child.tag.strip().lower()
+        text = (child.text or "").strip()
+        d[tag] = text
+    return d
 
-def parse_xml(path):
-    rows = []
+def load_xml(path: str, show_progress: bool = True) -> int:
     tree = ET.parse(path)
     root = tree.getroot()
-    # Expect children elements each representing a PoI with fields:
-    # pid, pname, platitude, plongitude, pcategory, pratings
-    for item in root:
-        lat_text = _get_text(item, "platitude")
-        lng_text = _get_text(item, "plongitude")
-        rate_text = _get_text(item, "pratings")
-        rows.append(
-            {
-                "external_id": _get_text(item, "pid"),
-                "name": _get_text(item, "pname"),
-                "latitude": float(lat_text) if lat_text else None,
-                "longitude": float(lng_text) if lng_text else None,
-                "category": _get_text(item, "pcategory"),
-                "ratings": [p.strip() for p in rate_text.split(",")] if rate_text else None,
-            }
-        )
-    return rows
+
+    # Accept <pois><poi>...</poi></pois> or flat list
+    poi_nodes = root.findall(".//poi") or list(root)
+
+    rows: List[Dict[str, Any]] = [_element_to_dict(node) for node in poi_nodes]
+
+    total = len(rows)
+    if total == 0:
+        return 0
+
+    batch_size = chunk_by_parts(total)
+    created = 0
+    for batch in chunked(rows, batch_size):
+        objs = []
+        for rec in batch:
+            data = normalize_record(rec, "xml")
+            if not data.get("external_id"):
+                continue
+            objs.append(Poi(
+                external_id=data["external_id"],
+                name=data["name"],
+                category=data["category"],
+                latitude=data["latitude"],
+                longitude=data["longitude"],
+                avg_rating=data["avg_rating"],
+            ))
+        if objs:
+            with transaction.atomic():
+                Poi.objects.bulk_create(objs, ignore_conflicts=True)
+                created += len(objs)
+        if show_progress and batch_size != total:
+            print(progress_messages(min(created, total), total))
+    return created

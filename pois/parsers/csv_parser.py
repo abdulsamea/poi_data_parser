@@ -1,29 +1,40 @@
+from __future__ import annotations
 import csv
+from typing import Dict, Any, List
+from django.db import transaction
+from pois.models import Poi
+from pois.parsers.rating_utils import parse_csv_ratings
+from pois.utils import normalize_record, chunk_by_parts, chunked, progress_messages
 
-def _parse_ratings(text):
-    if text is None:
-        return None
-    try:
-        parts = [t.strip() for t in str(text).split(",") if str(t).strip() != ""]
-        nums = [float(p) for p in parts]
-        return nums if nums else None
-    except Exception:
-        return None
-
-def parse_csv(path):
-    rows = []
+def load_csv(path: str, show_progress: bool = True) -> int:
     with open(path, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
-        # Expected headers: poi_id, poi_name, poi_latitude, poi_longitude, poi_category, poi_ratings
-        for r in reader:
-            rows.append(
-                {
-                    "external_id": r.get("poi_id", "") or "",
-                    "name": r.get("poi_name", "") or "",
-                    "latitude": float(r["poi_latitude"]) if r.get("poi_latitude") not in (None, "") else None,
-                    "longitude": float(r["poi_longitude"]) if r.get("poi_longitude") not in (None, "") else None,
-                    "category": r.get("poi_category", "") or "",
-                    "ratings": _parse_ratings(r.get("poi_ratings")),
-                }
-            )
-    return rows
+        rows: List[Dict[str, Any]] = list(reader)
+
+    total = len(rows)
+    if total == 0:
+        return 0
+
+    batch_size = chunk_by_parts(total)
+    created = 0
+    for batch in chunked(rows, batch_size):
+        objs = []
+        for rec in batch:
+            data = normalize_record(rec, "csv")
+            if not data.get("external_id"):
+                continue
+            objs.append(Poi(
+                external_id=data["external_id"],
+                name=data["name"],
+                category=data["category"],
+                latitude=data["latitude"],
+                longitude=data["longitude"],
+                avg_rating=data["avg_rating"],
+            ))
+        if objs:
+            with transaction.atomic():
+                Poi.objects.bulk_create(objs, ignore_conflicts=True)
+                created += len(objs)
+        if show_progress and batch_size != total:
+            print(progress_messages(min(created, total), total))
+    return created

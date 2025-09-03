@@ -1,56 +1,46 @@
 from pathlib import Path
+from typing import List
 from django.core.management.base import BaseCommand, CommandError
-from pois.parsers.csv_parser import parse_csv
-from pois.parsers.json_parser import parse_json
-from pois.parsers.xml_parser import parse_xml
-from pois.utils import compute_avg, upsert_poi
+
+from pois.parsers.csv_parser import load_csv
+from pois.parsers.json_parser import load_json
+from pois.parsers.xml_parser import load_xml
 
 class Command(BaseCommand):
-    help = "Import PoI data from CSV, JSON, or XML files. Supports multiple file paths."
+    help = "Import PoI data from CSV, JSON, or XML files."
 
     def add_arguments(self, parser):
-        parser.add_argument("paths", nargs="+", help="One or more file paths to import")
+        parser.add_argument("paths", nargs="+", help="One or more file paths to import.")
 
     def handle(self, *args, **options):
-        paths: list[str] = options["paths"]
+        paths: List[str] = options["paths"]
         if not paths:
-            raise CommandError("No file paths provided")
+            raise CommandError("Provide at least one file path.")
 
-        total = 0
+        total_created = 0
         for p in paths:
-            file_path = Path(p)
-            if not file_path.exists() or not file_path.is_file():
-                raise CommandError(f"File not found: {p}")
+            fp = Path(p)
+            if not fp.exists() or not fp.is_file():
+                self.stderr.write(self.style.ERROR(f"File not found: {fp}"))
+                continue
 
-            suffix = file_path.suffix.lower()
-            if suffix == ".csv":
-                rows = parse_csv(file_path)
-            elif suffix == ".json":
-                rows = parse_json(file_path)
-            elif suffix == ".xml":
-                rows = parse_xml(file_path)
-            else:
-                raise CommandError(f"Unsupported file type: {suffix}")
-
-            imported = 0
-            for row in rows:
-                ext_id = str(row.get("external_id", "")).strip()
-                if not ext_id:
+            suffix = fp.suffix.lower()
+            self.stdout.write(self.style.NOTICE(f"Importing {fp} ..."))
+            try:
+                if suffix == ".csv":
+                    created = load_csv(str(fp), show_progress=True)
+                elif suffix == ".json":
+                    created = load_json(str(fp), show_progress=True)
+                elif suffix == ".xml":
+                    created = load_xml(str(fp), show_progress=True)
+                else:
+                    self.stderr.write(self.style.WARNING(f"Skipping unsupported file type: {fp}"))
                     continue
-                ratings = row.get("ratings", None)
-                avg = compute_avg(ratings)
-                payload = {
-                    "name": (row.get("name") or "").strip(),
-                    "external_id": ext_id,
-                    "category": (row.get("category") or "").strip(),
-                    "latitude": row.get("latitude"),
-                    "longitude": row.get("longitude"),
-                    "avg_rating": avg,
-                }
-                upsert_poi(payload)
-                imported += 1
+            except Exception as exc:
+                self.stderr.write(self.style.ERROR(f"Failed {fp}: {exc}"))
+                continue
 
-            total += imported
-            self.stdout.write(self.style.SUCCESS(f"Imported {imported} records from {file_path.name}"))
+            total_created += created
+            self.stdout.write(self.style.SUCCESS(f"Imported {created} records from {fp}."))
 
-        self.stdout.write(self.style.SUCCESS(f"Total imported/updated: {total}"))
+        self.stdout.write(self.style.SUCCESS(f"Done. Total imported: {total_created}."))

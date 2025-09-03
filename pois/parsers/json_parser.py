@@ -1,25 +1,42 @@
 import json
+from typing import Dict, Any, List
+from django.db import transaction
+from pois.models import Poi
+from pois.parsers.rating_utils import parse_json_ratings
+from pois.utils import normalize_record, chunk_by_parts, chunked, progress_messages
 
-def parse_json(path):
-    rows = []
+def load_json(path: str, show_progress: bool = True) -> int:
     with open(path, encoding="utf-8") as f:
-        data = json.load(f)
+        payload = json.load(f)
 
-    # Accept array at root or objects under common keys (items/pois)
-    items = data if isinstance(data, list) else (data.get("items") or data.get("pois") or [])
+    # Accept either list of objects or object with "items"
+    items = payload if isinstance(payload, list) else payload.get("items", [])
+    rows: List[Dict[str, Any]] = list(items)
 
-    for obj in items:
-        coords = obj.get("coordinates") or {}
-        lat = coords.get("latitude") if isinstance(coords, dict) else None
-        lng = coords.get("longitude") if isinstance(coords, dict) else None
-        rows.append(
-            {
-                "external_id": str(obj.get("id", "") or ""),
-                "name": obj.get("name", "") or "",
-                "latitude": lat if lat not in (None, "") else None,
-                "longitude": lng if lng not in (None, "") else None,
-                "category": obj.get("category", "") or "",
-                "ratings": obj.get("ratings"),
-            }
-        )
-    return rows
+    total = len(rows)
+    if total == 0:
+        return 0
+
+    batch_size = chunk_by_parts(total)
+    created = 0
+    for batch in chunked(rows, batch_size):
+        objs = []
+        for rec in batch:
+            data = normalize_record(rec, "json")
+            if not data.get("external_id"):
+                continue
+            objs.append(Poi(
+                external_id=data["external_id"],
+                name=data["name"],
+                category=data["category"],
+                latitude=data["latitude"],
+                longitude=data["longitude"],
+                avg_rating=data["avg_rating"]
+            ))
+        if objs:
+            with transaction.atomic():
+                Poi.objects.bulk_create(objs, ignore_conflicts=True)
+                created += len(objs)
+        if show_progress and batch_size != total:
+            print(progress_messages(min(created, total), total))
+    return created
