@@ -2,6 +2,7 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+SECRET_KEY = "dev-secret-please-change-4F;4ZrQp!uF@8y#zJp9vK2Fj"
 DEBUG = True
 ALLOWED_HOSTS: list[str] = []
 
@@ -25,7 +26,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "poi_project.urls"
+ROOT_URLCONF = "poi_data_parser.urls"
 
 TEMPLATES = [
     {
@@ -43,7 +44,7 @@ TEMPLATES = [
     }
 ]
 
-WSGI_APPLICATION = "poi_project.wsgi.application"
+WSGI_APPLICATION = "poi_data_parser.wsgi.application"
 
 DATABASES = {
     "default": {"ENGINE": "django.db.backends.sqlite3", "NAME": BASE_DIR / "db.sqlite3"}
