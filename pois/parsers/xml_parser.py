@@ -2,7 +2,7 @@ from xml.etree import ElementTree as ET
 from typing import Dict, Any, List
 from django.db import transaction
 from pois.models import Poi
-from pois.utils import normalize_record, chunk_by_parts, chunked, progress_messages
+from pois.utils import normalize_record, calculate_chunks, create_chunks, progress_messages
 
 def _element_to_dict(el: ET.Element) -> Dict[str, Any]:
     d: Dict[str, Any] = {}
@@ -25,9 +25,9 @@ def load_xml(path: str, show_progress: bool = True) -> int:
     if total == 0:
         return 0
 
-    batch_size = chunk_by_parts(total)
+    batch_size = calculate_chunks(total)
     created = 0
-    for batch in chunked(rows, batch_size):
+    for batch in create_chunks(rows, batch_size):
         objs = []
         for rec in batch:
             data = normalize_record(rec, "xml")

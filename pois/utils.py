@@ -5,6 +5,14 @@ from typing import Any, List
 
 
 def parse_ratings(raw: Any) -> List[Decimal]:
+    """
+    Normalize ratings into a list of Decimals.
+    Accepts:
+    - None or empty string -> []
+    - list/tuple of numbers/strings -> [Decimal, ...]
+    - CSV-like string: "3,4,5" or "{3,4,5}" -> [Decimal('3'), ...]
+    - single scalar -> [Decimal(...)]
+    """
     if raw is None or (isinstance(raw, str) and raw.strip() == ""):
         return []
     if isinstance(raw, (list, tuple)):
@@ -32,6 +40,13 @@ def average_rating(ratings: List[Decimal]) -> Decimal | None:
 
 
 def normalize_record(record: Dict[str, Any], file_type: str) -> Dict[str, Any]:
+    """
+    Normalize a PoI record from CSV/JSON/XML into a unified schema.
+    - Output keys: external_id(str), name(str), category(str), latitude(float|None), longitude(float|None), ratings(List[Decimal])
+    - CSV fields: poi_id, poi_name, poi_latitude, poi_longitude, poi_category, poi_ratings.
+    - JSON fields: id, name, coordinates (dict with latitude/longitude or [lat, lon]), category, ratings
+    - XML fields: pid, pname, platitude, plongitude, pcategory, pratings
+    """
     # Map source keys for different files to common key-value data and return it.
     if file_type == "csv":
         ext_id = record.get("poi_id")
@@ -74,14 +89,14 @@ def normalize_record(record: Dict[str, Any], file_type: str) -> Dict[str, Any]:
     }
 
 
-def chunk_by_parts(total: int) -> int:
+def calculate_chunks(total: int) -> int:
     """
-        This function simply provides number of chunks for batch processing if records are more than 1K.
-        Parameters
-        ----------
-        total : str
-            Total number of records in the file.
-        """
+    This function simply provides number of chunks for batch processing if records are more than 1K.
+    Parameters
+    ----------
+    total : str
+        Total number of records in the file.
+    """
     if total <= 1000:
         return total
     if total >= 100_000:
@@ -92,7 +107,7 @@ def chunk_by_parts(total: int) -> int:
     size = max(1, (total + parts - 1) // parts)
     return size
 
-def chunked(iterable: Iterable[Any], size: int) -> Generator[List[Any], None, None]:
+def create_chunks(iterable: Iterable[Any], size: int) -> Generator[List[Any], None, None]:
     buf: List[Any] = []
     for item in iterable:
         buf.append(item)
