@@ -1,4 +1,4 @@
-# Django POI Admin
+# Django POI Extraction App
 
 A Django 4/5 application (Python 3.10+) that imports Points of Interest (PoIs) from CSV, JSON, and XML via a management command and lets the data be browsed in the Django Admin with search and category filtering.
 
