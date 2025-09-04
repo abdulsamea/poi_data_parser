@@ -48,7 +48,7 @@ python manage.py migrate
 
 - Place sample data somewhere in your local machine
 
-7. Import data (one or multiple files)
+7. Import data using below commands (one or multiple files) and wait for the extraction to complete
 
 ```
 python manage.py import_pois data/pois.json
