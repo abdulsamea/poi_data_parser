@@ -17,8 +17,8 @@ A Django 4/5 application (Python 3.10+) that imports Points of Interest (PoIs) f
 python -m venv .venv
 ```
 
-```.venv\Scripts\activate
-
+```
+.venv\Scripts\activate
 ```
 
 3. Install dependencies (Only Django is added in here)
