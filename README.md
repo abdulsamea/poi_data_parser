@@ -6,6 +6,7 @@ A Django 4/5 application (Python 3.10+) that imports Points of Interest (PoIs) f
 
 - I have built this app to utilize sqlite for easier db access.
 - Also added progress logs in case the file to be uploaded is large (e.g. 100K records)
+- Also added filtering by name.
 
 ## How to setup this codebase on your local machine
 
@@ -21,13 +22,13 @@ python -m venv .venv
 .venv\Scripts\activate
 ```
 
-3. Install dependencies (Only Django is added in here)
+3. Install dependencies (Only Django is added in the requirements file)
 
 ```
 pip install -r requirements.txt
 ```
 
-4. Database setup (migrations)
+4. Now setup Database (migrations)
 
 ```
 python manage.py makemigrations
