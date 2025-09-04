@@ -13,28 +13,35 @@ A Django 4/5 application (Python 3.10+) that imports Points of Interest (PoIs) f
 
 2. Create and activate a virtual environment (Windows)
 
-`  python -m venv .venv
- `
+```
+python -m venv .venv
+```
 
-`.venv\Scripts\activate
-  `
+```.venv\Scripts\activate
+
+```
 
 3. Install dependencies (Only Django is added in here)
 
-`  pip install -r requirements.txt
- `
+```
+pip install -r requirements.txt
+```
 
 4. Database setup (migrations)
 
-`  python manage.py makemigrations
- `
+```
+python manage.py makemigrations
+```
 
-`  python manage.py migrate
- `
+```
+python manage.py migrate
+```
 
 5. Create an admin user
 
-- Use CMD or powershell or editor terminal and type in `python manage.py createsuperuser` and follow the instructions shown. Remember the credentials for the admin user created in this step.
+- Use CMD or powershell or editor terminal and type in:
+  `python manage.py createsuperuser`
+  and follow the instructions shown. Remember the credentials for the admin user created in this step.
 
 6. Prepare sample data
 
@@ -42,16 +49,19 @@ A Django 4/5 application (Python 3.10+) that imports Points of Interest (PoIs) f
 
 7. Import data (one or multiple files)
 
-`  python manage.py import_pois data/pois.json
- `
+```
+python manage.py import_pois data/pois.json
+```
 
-`  python manage.py import_pois data/pois.csv data/pois.xml data/pois.csv
- `
+```
+python manage.py import_pois data/pois.csv data/pois.xml data/pois.csv
+```
 
 8. Run the development server
 
+```
 python manage.py runserver
-`
+```
 
 9. Browse the Admin
 
