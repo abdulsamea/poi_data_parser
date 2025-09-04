@@ -5,7 +5,7 @@ A Django 5.1.2 based application (Python 3.10+) that imports Points of Interest 
 ## Working of this project
 
 - I have built this app to utilize sqlite for easier db access.
-- I have assumed that the id provided for each POI data in respective files is considered as External ID and the auto generated Id on sqlite is the Internal ID.
+- I have assumed that the id provided for each POI data in respective files is considered as External ID and the auto generated ID on sqlite is the Internal ID.
 - Also added progress logs in case the file to be uploaded is large (e.g. 100K records).
 - Also added filtering by name.
 
