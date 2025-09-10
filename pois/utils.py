@@ -1,4 +1,4 @@
-from typing import Iterable, List, Dict, Any, Generator
+from typing import Iterable, List, Dict, Any, Generator, Literal
 from decimal import Decimal
 from statistics import mean
 from typing import Any, List
@@ -23,14 +23,17 @@ def parse_ratings(raw: Any) -> List[Decimal]:
         if s.startswith("{") and s.endswith("}"):
             s = s[1:-1]
         parts = [p.strip() for p in s.split(",")]
-        vals = [p for p in parts if p != ""]
+        vals = parts
     else:
         vals = [raw]
 
     out: List[Decimal] = []
     for v in vals:
         try:
-            out.append(Decimal(str(v).strip()))
+            d = Decimal(str(v).strip())
+            if not d.is_finite():
+                continue
+            out.append(d)
         except Exception:
             continue
     return out
@@ -44,7 +47,7 @@ def normalize_record(record: Dict[str, Any], file_type: str) -> Dict[str, Any]:
     Normalize a PoI record from CSV/JSON/XML into a unified schema.
     - Output keys: external_id(str), name(str), category(str), latitude(float|None), longitude(float|None), ratings(List[Decimal])
     - CSV fields: poi_id, poi_name, poi_latitude, poi_longitude, poi_category, poi_ratings.
-    - JSON fields: id, name, coordinates (dict with latitude/longitude or [lat, lon]), category, ratings
+    - JSON fields: id, name, coordinates (json with latitude/longitude or [lat, lon]), category, ratings
     - XML fields: pid, pname, platitude, plongitude, pcategory, pratings
     """
     # Map source keys for different files to common key-value data and return it.
@@ -60,10 +63,8 @@ def normalize_record(record: Dict[str, Any], file_type: str) -> Dict[str, Any]:
         name = record.get("name")
         category = record.get("category")
         coords = record.get("coordinates") or {}
-        lat = (coords.get("latitude") if isinstance(coords, dict)
-               else (coords if isinstance(coords, (list, tuple)) and len(coords) > 0 else None))
-        lon = (coords.get("longitude") if isinstance(coords, dict)
-               else (coords[3] if isinstance(coords, (list, tuple)) and len(coords) > 1 else None))
+        lat = (coords.get("latitude") if isinstance(coords, dict) else  None)
+        lon = (coords.get("longitude") if isinstance(coords, dict) else  None)
         ratings_raw = record.get("ratings")
     elif file_type == "xml":
         ext_id = record.get("pid")
@@ -120,3 +121,20 @@ def create_chunks(iterable: Iterable[Any], size: int) -> Generator[List[Any], No
 def progress_messages(done: int, total: int) -> str:
     pct = (done / total * 100) if total else 100.0
     return f"Processed {done}/{total} records ({pct:.1f}%)."
+
+def save_by_name_and_category(data: Dict[str, any], memo: Dict[str, any]) -> None:
+    name = data.get("name")
+    category = data.get("category")
+    current_avg = data['avg_rating']
+    key = name + '--' + category
+    if key not in memo:
+        combined_avg = [current_avg] if isinstance(current_avg, Decimal) else []
+        memo[key] = {**data, "combined_avg": combined_avg }
+    else:
+        combined_avg = [ current_avg, *memo[key]['combined_avg'] ]
+        memo[key] = {**data, "combined_avg": combined_avg }
+
+
+
+
+
